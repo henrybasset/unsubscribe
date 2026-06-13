@@ -37,11 +37,16 @@ Build a real **Unsubscribe.app** and drop it in your Applications folder:
 ./build-app.command
 ```
 
-This assembles `Unsubscribe.app` (bundling `unsubscribe.py`), installs it to
-`/Applications` (or `~/Applications` if that isn't writable), and ad-hoc signs
-it. Launch it from Finder or Spotlight like any other app — it runs, then shows
-a summary dialog. State (what it's already done, plus logs) is kept in
-`~/Library/Application Support/Unsubscribe/`.
+This assembles `Unsubscribe.app` (bundling `unsubscribe.py`), generates the app
+icon (`generate_icon.py` → `Unsubscribe.png` → `.icns`, no dependencies),
+installs it to `/Applications` (or `~/Applications` if that isn't writable), and
+ad-hoc signs it. Launch it from Finder or Spotlight like any other app — it
+runs, then shows a summary dialog. State (what it's already done, plus logs) is
+kept in `~/Library/Application Support/Unsubscribe/`.
+
+It scans the Junk **and** Spam mailboxes of **every account** configured in
+Mail.app. It never moves or deletes your mail — handled messages stay right
+where they are in Junk, just marked with a blue flag.
 
 Prefer not to build an app? You can run it directly instead:
 

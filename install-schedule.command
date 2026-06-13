@@ -8,13 +8,14 @@ REPO="$(pwd)"
 PY="$(command -v python3 || true)"
 LABEL="com.local.unsubscribe"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+STATE="$HOME/Library/Application Support/Unsubscribe"
 
 if [[ -z "$PY" ]]; then
   echo "python3 not found. Run 'xcode-select --install' once, then try again."
   echo "Press any key to close..."; read -k1; exit 1
 fi
 
-mkdir -p "$HOME/Library/LaunchAgents"
+mkdir -p "$HOME/Library/LaunchAgents" "$STATE"
 cat > "$PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
@@ -33,8 +34,8 @@ cat > "$PLIST" <<EOF
     <key>Hour</key>    <integer>9</integer>
     <key>Minute</key> <integer>0</integer>
   </dict>
-  <key>StandardOutPath</key>  <string>$REPO/log.txt</string>
-  <key>StandardErrorPath</key><string>$REPO/log.txt</string>
+  <key>StandardOutPath</key>  <string>$STATE/launchd.log</string>
+  <key>StandardErrorPath</key><string>$STATE/launchd.log</string>
 </dict>
 </plist>
 EOF

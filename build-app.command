@@ -37,6 +37,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundleShortVersionString</key><string>1.0</string>
   <key>CFBundlePackageType</key>       <string>APPL</string>
   <key>CFBundleExecutable</key>        <string>Unsubscribe</string>
+  <key>CFBundleIconFile</key>          <string>Unsubscribe</string>
   <key>LSMinimumSystemVersion</key>    <string>10.13</string>
   <key>NSHumanReadableCopyright</key>  <string>MIT License</string>
 </dict>
@@ -63,6 +64,22 @@ WRAP
 # Bake in the python path discovered at build time.
 /usr/bin/sed -i '' "s#__PY__#$PY#" "$APP/Contents/MacOS/$APPNAME"
 chmod +x "$APP/Contents/MacOS/$APPNAME"
+
+# App icon: build Unsubscribe.icns from Unsubscribe.png (regenerate it if the
+# generator is present but the PNG is missing).
+if [[ ! -f "$REPO/Unsubscribe.png" && -f "$REPO/generate_icon.py" ]]; then
+  "$PY" "$REPO/generate_icon.py" || true
+fi
+if [[ -f "$REPO/Unsubscribe.png" ]]; then
+  ICONSET="$(mktemp -d)/Unsubscribe.iconset"
+  mkdir -p "$ICONSET"
+  for sz in 16 32 128 256 512; do
+    sips -z $sz $sz       "$REPO/Unsubscribe.png" --out "$ICONSET/icon_${sz}x${sz}.png"     >/dev/null
+    sips -z $((sz*2)) $((sz*2)) "$REPO/Unsubscribe.png" --out "$ICONSET/icon_${sz}x${sz}@2x.png" >/dev/null
+  done
+  iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/Unsubscribe.icns"
+  rm -rf "$ICONSET"
+fi
 
 # Ad-hoc code signature gives the app a stable identity, so the macOS
 # "allow control of Mail" permission keeps sticking across rebuilds.
