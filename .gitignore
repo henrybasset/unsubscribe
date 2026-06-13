@@ -1,0 +1,10 @@
+# Runtime state — local to each machine, not source
+seen.txt
+log.txt
+
+# Python
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
