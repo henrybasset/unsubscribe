@@ -1,0 +1,8 @@
+{
+  "_comment": "Copy to ~/Library/Application Support/Unsubscribe/config.json to customize AI triage (triage.py).",
+  "triage_days": 3,
+  "triage_mark": "flag",
+  "triage_model": "llama3.1:latest",
+  "triage_max": 50,
+  "_triage_mark_options": "flag = orange-flag in place (safe default); needs_action_mailbox = also move to a local 'Needs Action' mailbox"
+}

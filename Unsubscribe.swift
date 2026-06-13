@@ -82,6 +82,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ = add(menu, "Unsubscribe Now", #selector(runNow), "u")
         _ = add(menu, "Preview (Dry Run)…", #selector(runDry), "d")
         menu.addItem(.separator())
+        _ = add(menu, "Triage Inbox for Actions (AI)", #selector(triageNow), "t")
+        _ = add(menu, "Preview Triage (Dry Run)…", #selector(triageDry))
+        menu.addItem(.separator())
         lastRunItem.isEnabled = false
         menu.addItem(lastRunItem)
         _ = add(menu, "Open Log…", #selector(openLog))
@@ -112,43 +115,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Running the script
 
-    func execute(dryRun: Bool) {
+    func execute(title: String, script: String, dryRun: Bool) {
         if busy { return }
         busy = true
-        lastRunItem.title = dryRun ? "Previewing…" : "Unsubscribing…"
+        lastRunItem.title = "Running \(title)…"
         let py = pythonPath()
-        var args = [SCRIPT]
+        var args = [RESOURCES + "/" + script]
         if dryRun { args.append("--dry-run") }
         DispatchQueue.global().async {
             let result = run(py, args)
             DispatchQueue.main.async {
                 self.busy = false
-                self.lastRunItem.title = self.summaryLine(result.out, dryRun: dryRun)
-                self.showResult(result.out, dryRun: dryRun)
+                self.lastRunItem.title = "Last run: \(title)\(dryRun ? " (preview)" : "")"
+                self.showResult(title: title, out: result.out, dryRun: dryRun)
             }
         }
     }
 
-    func summaryLine(_ out: String, dryRun: Bool) -> String {
-        for line in out.split(separator: "\n") where line.contains("unsubscribed (or would):") {
-            let n = line.split(separator: ":").last?.trimmingCharacters(in: .whitespaces) ?? "?"
-            return "Last run: \(n) handled\(dryRun ? " (preview)" : "")"
-        }
-        return "Last run: done"
-    }
-
-    func showResult(_ out: String, dryRun: Bool) {
-        let tail = out.split(separator: "\n").suffix(9).joined(separator: "\n")
+    func showResult(title: String, out: String, dryRun: Bool) {
+        let tail = out.split(separator: "\n").suffix(10).joined(separator: "\n")
         NSApp.activate(ignoringOtherApps: true)
         let a = NSAlert()
-        a.messageText = dryRun ? "Unsubscribe — Preview" : "Unsubscribe — Done"
+        a.messageText = dryRun ? "\(title) — Preview" : "\(title) — Done"
         a.informativeText = tail.isEmpty ? "No output." : tail
         a.addButton(withTitle: "OK")
         a.runModal()
     }
 
-    @objc func runNow() { execute(dryRun: false) }
-    @objc func runDry() { execute(dryRun: true) }
+    @objc func runNow() { execute(title: "Unsubscribe", script: "unsubscribe.py", dryRun: false) }
+    @objc func runDry() { execute(title: "Unsubscribe", script: "unsubscribe.py", dryRun: true) }
+    @objc func triageNow() { execute(title: "Triage", script: "triage.py", dryRun: false) }
+    @objc func triageDry() { execute(title: "Triage", script: "triage.py", dryRun: true) }
     @objc func openLog() { openPath(STATE + "/log.txt") }
     @objc func openSpammers() { openPath(STATE + "/spammers.csv") }
     @objc func openGitHub() { NSWorkspace.shared.open(URL(string: REPO_URL)!) }

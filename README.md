@@ -85,6 +85,41 @@ Or double-click **`Unsubscribe.command`** in Finder.
 > First run, macOS asks for permission to let the script control Mail. Click
 > **OK** (this is the standard Automation prompt) and run it again.
 
+## AI triage (optional, 100% local)
+
+If you have [Ollama](https://ollama.com) installed, Unsubscribe can also read
+your recent **Inbox** and surface the messages that need your personal action
+(reply, confirm, pay, sign, schedule, deadline). Your email is sent **only** to
+Ollama on `localhost` — nothing leaves your Mac.
+
+From the menu bar:
+
+- **Triage Inbox for Actions (AI)** — classify recent inbox mail and mark the
+  action items
+- **Preview Triage (Dry Run)** — classify and report only, change nothing
+
+Setup:
+
+```sh
+ollama pull llama3.1:latest    # or any model you prefer
+```
+
+It never deletes or archives anything, and it deliberately **errs toward
+over-flagging** rather than missing a real action item. Configure it by copying
+[`config.example.json`](config.example.json) to
+`~/Library/Application Support/Unsubscribe/config.json`:
+
+| key | default | meaning |
+|-----|---------|---------|
+| `triage_days`  | `3` | how many days back to read |
+| `triage_mark`  | `"flag"` | `"flag"` = orange-flag in place; `"needs_action_mailbox"` = also **move** it into a local "Needs Action" mailbox |
+| `triage_model` | `"llama3.1:latest"` | any installed Ollama model |
+| `triage_max`   | `50` | safety cap on messages per run |
+
+> Note: `needs_action_mailbox` moves matched mail into an **On My Mac** mailbox,
+> so it leaves the server inbox (and your other devices). Use `"flag"` if you'd
+> rather keep everything in place. Either way it's reversible.
+
 ## Run it automatically (optional)
 
 Double-click **`install-schedule.command`** to have it run quietly once a day at
