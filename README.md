@@ -29,6 +29,22 @@ senders themselves put in their emails.
 - macOS with **Mail.app** set up (your accounts already configured there).
 - `python3` (preinstalled with Xcode Command Line Tools: `xcode-select --install`).
 
+## Install as a Mac app
+
+Build a real **Unsubscribe.app** and drop it in your Applications folder:
+
+```sh
+./build-app.command
+```
+
+This assembles `Unsubscribe.app` (bundling `unsubscribe.py`), installs it to
+`/Applications` (or `~/Applications` if that isn't writable), and ad-hoc signs
+it. Launch it from Finder or Spotlight like any other app — it runs, then shows
+a summary dialog. State (what it's already done, plus logs) is kept in
+`~/Library/Application Support/Unsubscribe/`.
+
+Prefer not to build an app? You can run it directly instead:
+
 ## Use it
 
 **Try it safely first** — a dry run changes nothing and just shows what it would do:

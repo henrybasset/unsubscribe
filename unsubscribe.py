@@ -31,14 +31,19 @@ import urllib.request
 import urllib.error
 from email.parser import Parser
 
-# Repo-relative state, so it works wherever the repo is cloned.
-BASE = os.path.dirname(os.path.abspath(__file__))
-SEEN_PATH = os.path.join(BASE, "seen.txt")
-LOG_PATH = os.path.join(BASE, "log.txt")
+# State lives in the standard macOS per-user location, so it works whether the
+# script is run from a cloned repo or from an installed Unsubscribe.app bundle
+# (an app in /Applications can't write next to itself). Override with UNSUB_HOME.
+STATE = os.environ.get("UNSUB_HOME") or os.path.expanduser(
+    "~/Library/Application Support/Unsubscribe")
+os.makedirs(STATE, exist_ok=True)
+SEEN_PATH = os.path.join(STATE, "seen.txt")
+LOG_PATH = os.path.join(STATE, "log.txt")
 SEP = "@@@MSGSEP@@@"
 FLAG_COLOR_INDEX = 4  # macOS Mail flag colors: 0 red .. 6; 4 = blue
 
 DRY_RUN = "--dry-run" in sys.argv
+NOTIFY = "--notify" in sys.argv  # show a native dialog with the summary (app mode)
 
 # Pass 1: dump raw headers of every Junk/Spam message (Message-ID is in them).
 READ_SCRIPT = r'''
@@ -209,11 +214,24 @@ end run
     _ = ids_json  # kept for debugging/logging parity
 
 
+def applescript_str(s):
+    """Quote a Python string as an AppleScript string literal (newlines ok)."""
+    return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
 def applescript_list(items):
     """Build an AppleScript list literal of quoted strings."""
-    def esc(s):
-        return s.replace("\\", "\\\\").replace('"', '\\"')
-    return "{" + ", ".join('"%s"' % esc(i) for i in items) + "}"
+    return "{" + ", ".join(applescript_str(i) for i in items) + "}"
+
+
+def notify(text):
+    """Pop a native macOS dialog with a run summary (used in app mode)."""
+    script = (
+        "display dialog %s with title \"Unsubscribe\" "
+        "buttons {\"OK\"} default button \"OK\" with icon note"
+        % applescript_str(text)
+    )
+    run_osascript(script)
 
 
 def main():
@@ -272,6 +290,20 @@ def main():
     log("  log file: %s" % LOG_PATH)
     if DRY_RUN:
         log("\nThis was a dry run. Re-run without --dry-run to do it for real.")
+
+    if NOTIFY:
+        verb = "Would unsubscribe" if DRY_RUN else "Unsubscribed"
+        notify(
+            "Unsubscribe %s.\n\n"
+            "%s: %d\n"
+            "Already handled before: %d\n"
+            "Mailto-only skipped: %d\n"
+            "No unsubscribe link: %d\n\n"
+            "Scanned %d Junk/Spam message(s).\n"
+            "Log: %s"
+            % ("(dry run) finished" if DRY_RUN else "finished",
+               verb, done, already, mailto_only, nolink, len(blocks), LOG_PATH)
+        )
 
 
 if __name__ == "__main__":
