@@ -25,11 +25,13 @@ Usage:
 import os
 import re
 import sys
+import csv
 import json
 import subprocess
 import urllib.request
 import urllib.error
 from email.parser import Parser
+from email.utils import parseaddr
 
 # State lives in the standard macOS per-user location, so it works whether the
 # script is run from a cloned repo or from an installed Unsubscribe.app bundle
@@ -39,6 +41,7 @@ STATE = os.environ.get("UNSUB_HOME") or os.path.expanduser(
 os.makedirs(STATE, exist_ok=True)
 SEEN_PATH = os.path.join(STATE, "seen.txt")
 LOG_PATH = os.path.join(STATE, "log.txt")
+SPAM_PATH = os.path.join(STATE, "spammers.csv")  # captured sender addresses
 SEP = "@@@MSGSEP@@@"
 FLAG_COLOR_INDEX = 4  # macOS Mail flag colors: 0 red .. 6; 4 = blue
 
@@ -135,14 +138,37 @@ def parse_unsub(block):
     targets = re.findall(r"<([^>]+)>", raw)
     https = next((t for t in targets if t.lower().startswith("http")), None)
     mailto = next((t for t in targets if t.lower().startswith("mailto:")), None)
+    name, address = parseaddr(msg.get("From", ""))
     return {
         "subject": (msg.get("Subject") or "(no subject)").strip()[:80],
         "sender": (msg.get("From") or "?").strip()[:80],
+        "name": name.strip(),
+        "address": address.strip().lower(),
         "message_id": (msg.get("Message-ID") or msg.get("Message-Id") or "").strip(),
         "https": https,
         "mailto": mailto,
         "one_click": "one-click" in post.lower(),
     }
+
+
+def load_spammers():
+    known = set()
+    if os.path.exists(SPAM_PATH):
+        with open(SPAM_PATH, newline="") as f:
+            for row in csv.reader(f):
+                if row and "@" in row[0]:
+                    known.add(row[0])
+    return known
+
+
+def append_spammers(rows):
+    """Append [address, name, subject] rows; write a header if file is new."""
+    new_file = not os.path.exists(SPAM_PATH)
+    with open(SPAM_PATH, "a", newline="") as f:
+        w = csv.writer(f)
+        if new_file:
+            w.writerow(["address", "name", "example_subject"])
+        w.writerows(rows)
 
 
 def do_unsubscribe(info):
@@ -242,11 +268,20 @@ def main():
     log("Found %d message(s) in Junk/Spam." % len(blocks))
 
     seen = load_seen()
+    known_spammers = load_spammers()
+    new_spammers = []
     handled_ids = set()
     done = mailto_only = nolink = already = 0
 
     for block in blocks:
         info = parse_unsub(block)
+
+        # Capture every junk sender's address (deduped across runs), whether or
+        # not it offers an unsubscribe link.
+        addr = info["address"]
+        if addr and "@" in addr and addr not in known_spammers:
+            known_spammers.add(addr)
+            new_spammers.append([addr, info["name"], info["subject"]])
 
         if not info["https"] and not info["mailto"]:
             nolink += 1
@@ -282,11 +317,15 @@ def main():
         log("Flagging %d handled message(s) in Mail..." % len(handled_ids))
         flag_handled(handled_ids)
 
+    if new_spammers:
+        append_spammers(new_spammers)
+
     log("\nSummary:")
     log("  unsubscribed (or would): %d" % done)
     log("  already handled before:  %d" % already)
     log("  mailto-only skipped:     %d" % mailto_only)
     log("  no unsubscribe link:     %d" % nolink)
+    log("  new spammer addresses:   %d  (%s)" % (len(new_spammers), SPAM_PATH))
     log("  log file: %s" % LOG_PATH)
     if DRY_RUN:
         log("\nThis was a dry run. Re-run without --dry-run to do it for real.")
@@ -298,11 +337,13 @@ def main():
             "%s: %d\n"
             "Already handled before: %d\n"
             "Mailto-only skipped: %d\n"
-            "No unsubscribe link: %d\n\n"
+            "No unsubscribe link: %d\n"
+            "New spammer addresses logged: %d\n\n"
             "Scanned %d Junk/Spam message(s).\n"
             "Log: %s"
             % ("(dry run) finished" if DRY_RUN else "finished",
-               verb, done, already, mailto_only, nolink, len(blocks), LOG_PATH)
+               verb, done, already, mailto_only, nolink,
+               len(new_spammers), len(blocks), LOG_PATH)
         )
 
 

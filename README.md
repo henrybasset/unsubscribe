@@ -37,16 +37,32 @@ Build a real **Unsubscribe.app** and drop it in your Applications folder:
 ./build-app.command
 ```
 
-This assembles `Unsubscribe.app` (bundling `unsubscribe.py`), generates the app
-icon (`generate_icon.py` → `Unsubscribe.png` → `.icns`, no dependencies),
-installs it to `/Applications` (or `~/Applications` if that isn't writable), and
-ad-hoc signs it. Launch it from Finder or Spotlight like any other app — it
-runs, then shows a summary dialog. State (what it's already done, plus logs) is
-kept in `~/Library/Application Support/Unsubscribe/`.
+This builds **Unsubscribe.app** — a **menu bar app** (an envelope icon in the
+top bar, no Dock icon). If `swiftc` is present it compiles the native menu-bar
+app from `Unsubscribe.swift`; otherwise it falls back to a simple run-once
+launcher. The icon is generated with no dependencies (`generate_icon.py` →
+`Unsubscribe.png` → `.icns`). It installs to `/Applications` (or
+`~/Applications`) and is ad-hoc signed.
+
+Click the menu bar icon for controls:
+
+- **Unsubscribe Now** — run for real
+- **Preview (Dry Run)** — show what it would do, change nothing
+- **Open Log** / **Open Spammer List** — view results
+- **Run Daily at 9:00 AM** — toggle the background schedule
+- **Open at Login** — keep it in the menu bar across reboots
 
 It scans the Junk **and** Spam mailboxes of **every account** configured in
 Mail.app. It never moves or deletes your mail — handled messages stay right
 where they are in Junk, just marked with a blue flag.
+
+### What it keeps
+
+In `~/Library/Application Support/Unsubscribe/`:
+
+- `seen.txt` — unsubscribe links already actioned (so re-runs skip them)
+- `log.txt` — full run log
+- `spammers.csv` — every junk sender it has seen (`address, name, example_subject`)
 
 Prefer not to build an app? You can run it directly instead:
 
