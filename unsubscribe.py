@@ -47,6 +47,7 @@ FLAG_COLOR_INDEX = 4  # macOS Mail flag colors: 0 red .. 6; 4 = blue
 
 DRY_RUN = "--dry-run" in sys.argv
 NOTIFY = "--notify" in sys.argv  # show a native dialog with the summary (app mode)
+DELETE = "--delete" in sys.argv  # opt-in: move no-unsubscribe-link junk to Trash
 
 # Pass 1: dump raw headers of every Junk/Spam message (Message-ID is in them).
 READ_SCRIPT = r'''
@@ -258,6 +259,55 @@ end run
     _ = ids_json  # kept for debugging/logging parity
 
 
+def delete_messages(message_ids):
+    """Opt-in: move the given Junk/Spam messages to Trash (`delete`)."""
+    if not message_ids:
+        return
+    script = '''
+on run
+  set wanted to ''' + applescript_list(message_ids) + '''
+  tell application "Mail"
+    set candidates to {}
+    try
+      set candidates to candidates & (every mailbox)
+    end try
+    repeat with acct in accounts
+      try
+        set candidates to candidates & (every mailbox of acct)
+      end try
+    end repeat
+    -- expand to include nested sub-mailboxes (e.g. [Gmail]/Spam)
+    set i to 1
+    repeat while i is less than or equal to (count of candidates)
+      try
+        set kids to (mailboxes of (item i of candidates))
+        if (count of kids) > 0 then set candidates to candidates & kids
+      end try
+      set i to i + 1
+    end repeat
+    repeat with mb in candidates
+      set nm to ""
+      try
+        set nm to name of mb
+      end try
+      if (nm contains "junk") or (nm contains "spam") then
+        try
+          repeat with msg in (messages of mb)
+            try
+              if wanted contains (message id of msg) then delete msg
+            end try
+          end repeat
+        end try
+      end if
+    end repeat
+  end tell
+end run
+'''
+    proc = run_osascript(script)
+    if proc.returncode != 0:
+        log("  (note: could not delete messages: %s)" % proc.stderr.strip())
+
+
 def applescript_str(s):
     """Quote a Python string as an AppleScript string literal (newlines ok)."""
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
@@ -289,6 +339,7 @@ def main():
     known_spammers = load_spammers()
     new_spammers = []
     handled_ids = set()
+    nolink_ids = []       # no-unsubscribe-link junk (candidates for --delete)
     processed_ids = set()  # dedupe messages listed under more than one mailbox
     done = mailto_only = nolink = already = 0
 
@@ -312,6 +363,8 @@ def main():
 
         if not info["https"] and not info["mailto"]:
             nolink += 1
+            if mid:
+                nolink_ids.append(mid)
             continue
 
         if not info["https"] and info["mailto"]:
@@ -344,6 +397,13 @@ def main():
         log("Flagging %d handled message(s) in Mail..." % len(handled_ids))
         flag_handled(handled_ids)
 
+    deleted = 0
+    if DELETE and nolink_ids:
+        deleted = len(nolink_ids)
+        if not DRY_RUN:
+            log("Moving %d no-unsubscribe-link message(s) to Trash..." % deleted)
+            delete_messages(nolink_ids)
+
     if new_spammers:
         append_spammers(new_spammers)
 
@@ -352,6 +412,8 @@ def main():
     log("  already handled before:  %d" % already)
     log("  mailto-only skipped:     %d" % mailto_only)
     log("  no unsubscribe link:     %d" % nolink)
+    if DELETE:
+        log("  moved to Trash (or would): %d" % deleted)
     log("  new spammer addresses:   %d  (%s)" % (len(new_spammers), SPAM_PATH))
     log("  log file: %s" % LOG_PATH)
     if DRY_RUN:

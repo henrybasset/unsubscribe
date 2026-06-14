@@ -48,6 +48,11 @@ Click the menu bar icon for controls:
 
 - **Unsubscribe Now** — run for real
 - **Preview (Dry Run)** — show what it would do, change nothing
+- **Move No-Link Spam to Trash** — unsubscribe, *and* move junk that has no
+  unsubscribe link to Trash (recoverable; asks first)
+- **Gmail: Unsubscribe from Spam** — reach Gmail's Spam via the Gmail API (see
+  [GMAIL_SETUP.md](GMAIL_SETUP.md))
+- **Triage Inbox for Actions (AI)** — local-AI triage (see below)
 - **Open Log** / **Open Spammer List** — view results
 - **Run Daily at 9:00 AM** — toggle the background schedule
 - **Open at Login** — keep it in the menu bar across reboots
@@ -84,6 +89,16 @@ Or double-click **`Unsubscribe.command`** in Finder.
 
 > First run, macOS asks for permission to let the script control Mail. Click
 > **OK** (this is the standard Automation prompt) and run it again.
+
+## Gmail spam (Apple Mail can't see it)
+
+Gmail does **not** sync its Spam folder over IMAP, so the Mail.app-based scan
+can't reach it. `gmail_unsubscribe.py` talks to Google directly via the Gmail
+API: it reads SPAM, unsubscribes via the `List-Unsubscribe` header, logs the
+senders, and (with `--delete` or `"gmail_delete": true`) moves handled spam to
+Trash. It uses **your own** Google OAuth client — a ~5-minute one-time setup in
+[GMAIL_SETUP.md](GMAIL_SETUP.md). No third-party packages; credentials and
+tokens stay in `~/Library/Application Support/Unsubscribe/`.
 
 ## AI triage (optional, 100% local)
 

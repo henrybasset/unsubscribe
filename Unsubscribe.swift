@@ -81,6 +81,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         _ = add(menu, "Unsubscribe Now", #selector(runNow), "u")
         _ = add(menu, "Preview (Dry Run)…", #selector(runDry), "d")
+        _ = add(menu, "Move No-Link Spam to Trash", #selector(deleteJunk))
+        menu.addItem(.separator())
+        _ = add(menu, "Gmail: Unsubscribe from Spam", #selector(gmailNow), "g")
+        _ = add(menu, "Gmail: Preview (Dry Run)…", #selector(gmailDry))
         menu.addItem(.separator())
         _ = add(menu, "Triage Inbox for Actions (AI)", #selector(triageNow), "t")
         _ = add(menu, "Preview Triage (Dry Run)…", #selector(triageDry))
@@ -115,13 +119,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Running the script
 
-    func execute(title: String, script: String, dryRun: Bool) {
+    func execute(title: String, script: String, dryRun: Bool, extra: [String] = []) {
         if busy { return }
         busy = true
         lastRunItem.title = "Running \(title)…"
         let py = pythonPath()
         var args = [RESOURCES + "/" + script]
         if dryRun { args.append("--dry-run") }
+        args += extra
         DispatchQueue.global().async {
             let result = run(py, args)
             DispatchQueue.main.async {
@@ -146,6 +151,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func runDry() { execute(title: "Unsubscribe", script: "unsubscribe.py", dryRun: true) }
     @objc func triageNow() { execute(title: "Triage", script: "triage.py", dryRun: false) }
     @objc func triageDry() { execute(title: "Triage", script: "triage.py", dryRun: true) }
+    @objc func gmailNow() { execute(title: "Gmail Unsubscribe", script: "gmail_unsubscribe.py", dryRun: false) }
+    @objc func gmailDry() { execute(title: "Gmail Unsubscribe", script: "gmail_unsubscribe.py", dryRun: true) }
+
+    @objc func deleteJunk() {
+        NSApp.activate(ignoringOtherApps: true)
+        let a = NSAlert()
+        a.messageText = "Move no-link spam to Trash?"
+        a.informativeText = "This unsubscribes as usual, and also moves junk that has "
+            + "no unsubscribe link to Trash (recoverable). Continue?"
+        a.addButton(withTitle: "Move to Trash")
+        a.addButton(withTitle: "Cancel")
+        if a.runModal() == .alertFirstButtonReturn {
+            execute(title: "Delete Spam", script: "unsubscribe.py", dryRun: false, extra: ["--delete"])
+        }
+    }
     @objc func openLog() { openPath(STATE + "/log.txt") }
     @objc func openSpammers() { openPath(STATE + "/spammers.csv") }
     @objc func openGitHub() { NSWorkspace.shared.open(URL(string: REPO_URL)!) }

@@ -4,5 +4,8 @@
   "triage_mark": "flag",
   "triage_model": "llama3.1:latest",
   "triage_max": 50,
-  "_triage_mark_options": "flag = orange-flag in place (safe default); needs_action_mailbox = also move to a local 'Needs Action' mailbox"
+  "_triage_mark_options": "flag = orange-flag in place (safe default); needs_action_mailbox = also move to a local 'Needs Action' mailbox",
+  "gmail_max": 200,
+  "gmail_delete": false,
+  "_gmail_notes": "gmail_unsubscribe.py settings. gmail_delete=true also moves handled Gmail spam to Trash. See GMAIL_SETUP.md."
 }

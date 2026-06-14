@@ -23,7 +23,9 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 # The program logic, bundled so the app is self-contained.
 cp "$REPO/unsubscribe.py" "$APP/Contents/Resources/unsubscribe.py"
-[[ -f "$REPO/triage.py" ]] && cp "$REPO/triage.py" "$APP/Contents/Resources/triage.py"
+for extra in triage.py gmail_unsubscribe.py; do
+  [[ -f "$REPO/$extra" ]] && cp "$REPO/$extra" "$APP/Contents/Resources/$extra"
+done
 
 # Info.plist — LSUIElement=true makes it a menu-bar agent (no Dock icon).
 cat > "$APP/Contents/Info.plist" <<'PLIST'
