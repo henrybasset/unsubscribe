@@ -8,6 +8,13 @@ set -e
 cd "${0:A:h}"          # repo dir (this script's folder)
 REPO="$(pwd)"
 
+# Need Apple's free developer tools (python3 + swiftc) for the menu-bar app.
+if ! command -v python3 >/dev/null 2>&1 || ! command -v swiftc >/dev/null 2>&1; then
+  echo "Unsubscribe needs Apple's free developer tools (one-time setup)."
+  echo "A window will open — click Install, let it finish, then run this again."
+  xcode-select --install 2>/dev/null || true
+  exit 1
+fi
 PY="$(command -v python3 || true)"
 [[ -z "$PY" ]] && PY="/usr/bin/python3"
 

@@ -13,18 +13,51 @@ senders themselves put in their emails.
 
 > **macOS · menu bar app · 100% local · MIT licensed**
 
-## Download & install (the easy way)
+## Install
+
+### Easiest — download the app
 
 1. Download **Unsubscribe.dmg** from the [Releases](https://github.com/henrybasset/unsubscribe/releases) page.
 2. Double-click it, then drag **Unsubscribe!** onto the **Applications** folder.
 3. Open it from Applications. **The first time**, macOS may say it "can't verify"
-   the app (normal for apps outside the App Store): go to  **Apple menu → System
+   the app (normal for apps outside the App Store): open **Apple menu → System
    Settings → Privacy & Security**, scroll down, and click **Open Anyway**.
-4. When asked, allow it to work with **Mail**. Look for the **envelope icon in
-   the menu bar** at the top of your screen — click it to clean up junk anytime.
+4. Allow it to control **Mail** when asked. Its envelope icon appears in the
+   **menu bar** at the top of your screen — click it to clean up junk anytime.
 
-Full plain-language steps are in `INSTALL.txt` inside the download. Prefer to
-build it yourself? See [Build as a Mac app](#install-as-a-mac-app) below.
+The same plain-language steps ride along inside the download as `INSTALL.txt`.
+
+### Or build it yourself (developers)
+
+```sh
+xcode-select --install   # one-time: installs Apple's free developer tools
+git clone https://github.com/henrybasset/unsubscribe.git ~/unsubscribe
+cd ~/unsubscribe && ./build-app.command
+```
+
+To update later: `cd ~/unsubscribe && git pull && ./build-app.command`.
+
+## Verify your download
+
+Each release ships a SHA-256 checksum (and, when available, a GPG signature) so
+you can confirm the `.dmg` is intact and authentic.
+
+**Checksum** — in the folder with both files, run:
+
+```sh
+shasum -a 256 -c Unsubscribe.dmg.sha256      # expect: Unsubscribe.dmg: OK
+```
+
+**GPG signature** (if a `.asc` is provided) — import the maintainer's public key
+once, then verify:
+
+```sh
+gpg --verify Unsubscribe.dmg.asc Unsubscribe.dmg   # expect: Good signature
+```
+
+> Maintainer: to enable GPG signing, `brew install gnupg`, create a key
+> (`gpg --full-generate-key`), and publish your public key. `make-dmg.command`
+> then signs every build automatically.
 
 ## What it does
 
