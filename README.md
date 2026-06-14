@@ -48,16 +48,19 @@ you can confirm the `.dmg` is intact and authentic.
 shasum -a 256 -c Unsubscribe.dmg.sha256      # expect: Unsubscribe.dmg: OK
 ```
 
-**GPG signature** (if a `.asc` is provided) — import the maintainer's public key
-once, then verify:
+**GPG signature** — the release `.dmg` is signed. Import the public key (shipped
+in this repo as [`SIGNING_KEY.asc`](SIGNING_KEY.asc)) once, then verify:
 
 ```sh
+gpg --import SIGNING_KEY.asc
 gpg --verify Unsubscribe.dmg.asc Unsubscribe.dmg   # expect: Good signature
 ```
 
-> Maintainer: to enable GPG signing, `brew install gnupg`, create a key
-> (`gpg --full-generate-key`), and publish your public key. `make-dmg.command`
-> then signs every build automatically.
+Signing key fingerprint (confirm it matches after import):
+
+```
+2F76 19B1 7C35 6E47 BF75  99C4 4711 BD88 01DF 242A
+```
 
 ## What it does
 

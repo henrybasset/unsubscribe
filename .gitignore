@@ -6,10 +6,10 @@ log.txt
 __pycache__/
 *.pyc
 
-# Build output
+# Build output (the signed release artifacts live on GitHub Releases, not in git)
 *.dmg
 *.dmg.sha256
-*.asc
+*.dmg.asc
 
 # macOS
 .DS_Store
