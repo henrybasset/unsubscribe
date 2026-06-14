@@ -28,6 +28,8 @@ import json
 import time
 import base64
 import hashlib
+import socket
+import ipaddress
 import webbrowser
 import urllib.parse
 import urllib.request
@@ -48,10 +50,43 @@ LOG_PATH = os.path.join(STATE, "gmail.log")
 AUTH_URI = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URI = "https://oauth2.googleapis.com/token"
 API = "https://gmail.googleapis.com/gmail/v1/users/me"
-SCOPE = "https://www.googleapis.com/auth/gmail.modify"  # read + trash
+SCOPE_READONLY = "https://www.googleapis.com/auth/gmail.readonly"
+SCOPE_MODIFY = "https://www.googleapis.com/auth/gmail.modify"  # read + trash
 
 DRY_RUN = "--dry-run" in sys.argv
 DELETE = "--delete" in sys.argv
+# Run without a TTY (e.g. the daily schedule)? Then never open a browser.
+INTERACTIVE = sys.stdin is not None and sys.stdin.isatty()
+
+
+def _host_is_public(host):
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except OSError:
+        return False
+    for info in infos:
+        try:
+            addr = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return False
+        if not addr.is_global:   # rejects private/loopback/link-local/reserved
+            return False
+    return bool(infos)
+
+
+def url_is_public(url):
+    host = urllib.parse.urlparse(url).hostname
+    return bool(host) and _host_is_public(host)
+
+
+class _SafeRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not url_is_public(newurl):
+            raise urllib.error.URLError("blocked redirect to non-public host")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_OPENER = urllib.request.build_opener(_SafeRedirect())
 
 
 def log(line):
@@ -135,7 +170,11 @@ def http_post_form(url, fields):
         return json.load(r)
 
 
-def oauth_flow(client_id, client_secret):
+def oauth_flow(client_id, client_secret, scope):
+    if not INTERACTIVE:
+        raise RuntimeError(
+            "Gmail sign-in needs a browser, but this is a non-interactive run. "
+            "Run it once from the menu bar or a terminal to sign in.")
     verifier = b64url(os.urandom(48))
     challenge = b64url(hashlib.sha256(verifier.encode()).digest())
     captured = {}
@@ -161,7 +200,7 @@ def oauth_flow(client_id, client_secret):
     redirect = "http://127.0.0.1:%d/" % httpd.server_address[1]
     auth_url = AUTH_URI + "?" + urllib.parse.urlencode({
         "client_id": client_id, "redirect_uri": redirect,
-        "response_type": "code", "scope": SCOPE,
+        "response_type": "code", "scope": scope,
         "code_challenge": challenge, "code_challenge_method": "S256",
         "access_type": "offline", "prompt": "consent",
     })
@@ -176,13 +215,15 @@ def oauth_flow(client_id, client_secret):
         "grant_type": "authorization_code", "redirect_uri": redirect,
     })
     with open(TOKEN_PATH, "w") as f:
-        json.dump({"refresh_token": tok.get("refresh_token")}, f)
+        json.dump({"refresh_token": tok.get("refresh_token"), "scope": scope}, f)
+    os.chmod(TOKEN_PATH, 0o600)  # secrets: owner-only
     return tok["access_token"]
 
 
-def get_access_token(client_id, client_secret):
+def get_access_token(client_id, client_secret, scope):
     if os.path.exists(TOKEN_PATH):
         try:
+            os.chmod(TOKEN_PATH, 0o600)  # tighten if it was created loose
             with open(TOKEN_PATH) as f:
                 rt = json.load(f).get("refresh_token")
             if rt:
@@ -193,7 +234,7 @@ def get_access_token(client_id, client_secret):
                 return tok["access_token"]
         except Exception:  # noqa: BLE001 - fall through to a fresh sign-in
             pass
-    return oauth_flow(client_id, client_secret)
+    return oauth_flow(client_id, client_secret, scope)
 
 
 # ---------------------------------------------------------------- Gmail API
@@ -239,6 +280,8 @@ def headers_of(token, msg_id):
 
 
 def do_unsubscribe(https, one_click):
+    if not url_is_public(https):
+        return "blocked: non-public host", False
     headers = {"User-Agent": "Mozilla/5.0 (Unsubscribe; +Gmail helper)"}
     try:
         if one_click:
@@ -246,10 +289,10 @@ def do_unsubscribe(https, one_click):
                 https, data=b"List-Unsubscribe=One-Click",
                 headers={**headers, "Content-Type": "application/x-www-form-urlencoded"},
                 method="POST")
-            with urllib.request.urlopen(req, timeout=15) as r:
+            with _OPENER.open(req, timeout=15) as r:
                 return "one-click POST -> %s" % r.status, True
         req = urllib.request.Request(https, headers=headers, method="GET")
-        with urllib.request.urlopen(req, timeout=15) as r:
+        with _OPENER.open(req, timeout=15) as r:
             return "GET -> %s (may need a manual confirm)" % r.status, True
     except urllib.error.HTTPError as e:
         return "http error %s" % e.code, False
@@ -267,11 +310,17 @@ def main():
             "Set up a Google OAuth client (one time) — see GMAIL_SETUP.md — and "
             "save the downloaded JSON to:\n  %s" % CREDS_PATH)
         return
+    try:
+        os.chmod(CREDS_PATH, 0o600)  # tighten perms on the secret if loose
+    except OSError:
+        pass
     cfg = load_config()
     delete = DELETE or bool(cfg.get("gmail_delete"))
+    # Least privilege: only ask for write (Trash) access when deletion is on.
+    scope = SCOPE_MODIFY if delete else SCOPE_READONLY
 
     try:
-        token = get_access_token(*creds)
+        token = get_access_token(creds[0], creds[1], scope)
     except Exception as e:  # noqa: BLE001
         log("Google sign-in failed: %s" % e)
         return

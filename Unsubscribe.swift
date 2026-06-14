@@ -75,7 +75,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func buildMenu() {
         let menu = NSMenu()
-        let header = NSMenuItem(title: "Unsubscribe from Junk", action: nil, keyEquivalent: "")
+        let header = NSMenuItem(title: "Unsubscribe!", action: nil, keyEquivalent: "")
         header.isEnabled = false
         menu.addItem(header)
         menu.addItem(.separator())

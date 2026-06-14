@@ -34,8 +34,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CFBundleName</key>              <string>Unsubscribe</string>
-  <key>CFBundleDisplayName</key>       <string>Unsubscribe</string>
+  <key>CFBundleName</key>              <string>Unsubscribe!</string>
+  <key>CFBundleDisplayName</key>       <string>Unsubscribe!</string>
   <key>CFBundleIdentifier</key>        <string>com.henrybasset.unsubscribe</string>
   <key>CFBundleVersion</key>           <string>1.1</string>
   <key>CFBundleShortVersionString</key><string>1.1</string>

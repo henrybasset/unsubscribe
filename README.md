@@ -28,6 +28,26 @@ senders themselves put in their emails.
 5. Records handled links in `seen.txt` so re-runs and the daily schedule skip
    work already done. Everything is logged to `log.txt`.
 
+## Email provider support
+
+Unsubscribe works **through Apple Mail**, so any account you've added to Mail.app
+is covered — it scans each account's **Junk / Spam / Bulk** folder across *all*
+accounts at once.
+
+| Provider | Spam folder in Apple Mail | How it's covered |
+|---|---|---|
+| iCloud | ✅ Junk | Apple Mail scan |
+| Outlook.com / Hotmail / Live | ✅ Junk | Apple Mail scan |
+| Yahoo | ✅ Bulk | Apple Mail scan |
+| AOL | ✅ Spam / Bulk | Apple Mail scan |
+| Fastmail, Proton (via Bridge), most IMAP | ✅ Junk / Spam | Apple Mail scan |
+| **Gmail** | ❌ — Gmail hides Spam over IMAP | **Gmail API** ([GMAIL_SETUP.md](GMAIL_SETUP.md)) |
+
+**Gmail is the only major provider that needs the dedicated API path**, because
+it's the only one that doesn't expose its Spam folder over IMAP. For everyone
+else (AOL, Yahoo, Outlook.com, Hotmail, iCloud, …), just add the account to
+Apple Mail and it's scanned automatically.
+
 ## Requirements
 
 - macOS with **Mail.app** set up (your accounts already configured there).

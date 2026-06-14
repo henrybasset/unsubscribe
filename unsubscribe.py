@@ -27,11 +27,47 @@ import re
 import sys
 import csv
 import json
+import socket
+import ipaddress
 import subprocess
+import urllib.parse
 import urllib.request
 import urllib.error
 from email.parser import Parser
 from email.utils import parseaddr
+
+
+# --- SSRF guard: only ever contact public hosts (junk "unsubscribe" links are
+# attacker-controlled and could point at loopback/internal/metadata addresses).
+
+def _host_is_public(host):
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except OSError:
+        return False
+    for info in infos:
+        try:
+            addr = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return False
+        if not addr.is_global:   # rejects private/loopback/link-local/reserved
+            return False
+    return bool(infos)
+
+
+def url_is_public(url):
+    host = urllib.parse.urlparse(url).hostname
+    return bool(host) and _host_is_public(host)
+
+
+class _SafeRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not url_is_public(newurl):
+            raise urllib.error.URLError("blocked redirect to non-public host")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_OPENER = urllib.request.build_opener(_SafeRedirect())
 
 # State lives in the standard macOS per-user location, so it works whether the
 # script is run from a cloned repo or from an installed Unsubscribe.app bundle
@@ -80,7 +116,7 @@ on run
       try
         set nm to name of mb
       end try
-      if (nm contains "junk") or (nm contains "spam") then
+      if (nm contains "junk") or (nm contains "spam") or (nm contains "bulk") then
         try
           repeat with msg in (messages of mb)
             try
@@ -184,6 +220,8 @@ def append_spammers(rows):
 def do_unsubscribe(info):
     """Perform the https unsubscribe. Returns a short status string."""
     url = info["https"]
+    if not url_is_public(url):
+        return "blocked: non-public host", False
     headers = {"User-Agent": "Mozilla/5.0 (Unsubscribe; +macOS Mail helper)"}
     try:
         if info["one_click"]:
@@ -192,10 +230,10 @@ def do_unsubscribe(info):
                 headers={**headers,
                          "Content-Type": "application/x-www-form-urlencoded"},
                 method="POST")
-            with urllib.request.urlopen(req, timeout=15) as r:
+            with _OPENER.open(req, timeout=15) as r:
                 return f"one-click POST -> {r.status}", True
         req = urllib.request.Request(url, headers=headers, method="GET")
-        with urllib.request.urlopen(req, timeout=15) as r:
+        with _OPENER.open(req, timeout=15) as r:
             return f"GET -> {r.status} (may need a manual confirm click)", True
     except urllib.error.HTTPError as e:
         return f"http error {e.code}", False
@@ -207,7 +245,6 @@ def flag_handled(message_ids):
     """Pass 2: flag every Junk/Spam message whose Message-ID we acted on."""
     if not message_ids:
         return
-    ids_json = json.dumps(list(message_ids))
     script = '''
 on run
   set wanted to ''' + applescript_list(message_ids) + '''
@@ -235,7 +272,7 @@ on run
       try
         set nm to name of mb
       end try
-      if (nm contains "junk") or (nm contains "spam") then
+      if (nm contains "junk") or (nm contains "spam") or (nm contains "bulk") then
         try
           repeat with msg in (messages of mb)
             try
@@ -256,7 +293,6 @@ end run
     if proc.returncode != 0:
         log("  (note: could not flag handled messages: %s)"
             % proc.stderr.strip())
-    _ = ids_json  # kept for debugging/logging parity
 
 
 def delete_messages(message_ids):
@@ -290,7 +326,7 @@ on run
       try
         set nm to name of mb
       end try
-      if (nm contains "junk") or (nm contains "spam") then
+      if (nm contains "junk") or (nm contains "spam") or (nm contains "bulk") then
         try
           repeat with msg in (messages of mb)
             try
