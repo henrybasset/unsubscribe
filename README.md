@@ -1,5 +1,7 @@
 # Unsubscribe
 
+<img src="Unsubscribe.png" width="120" align="right" alt="Unsubscribe app icon" />
+
 Auto-unsubscribe from junk mail on your Mac. **Unsubscribe** reads the messages
 sitting in your macOS **Mail.app** Junk / Spam mailboxes and unsubscribes from
 them using the standard [`List-Unsubscribe`](https://www.rfc-editor.org/rfc/rfc8058)
@@ -8,6 +10,8 @@ email header that legitimate senders include.
 Everything runs **locally on your machine**. No accounts, no passwords, no
 servers. The only network requests it makes are to the unsubscribe URLs the
 senders themselves put in their emails.
+
+> **macOS · menu bar app · 100% local · MIT licensed**
 
 ## What it does
 
@@ -45,6 +49,36 @@ launcher. The icon is generated with no dependencies (`generate_icon.py` →
 `~/Applications`) and is ad-hoc signed.
 
 Click the menu bar icon for controls:
+
+```
+ ✉︎  Unsubscribe ▾
+┌─────────────────────────────────────┐
+│  Unsubscribe from Junk              │
+├─────────────────────────────────────┤
+│  Unsubscribe Now                ⌘U  │
+│  Preview (Dry Run)…             ⌘D  │
+│  Move No-Link Spam to Trash         │
+├─────────────────────────────────────┤
+│  Gmail: Unsubscribe from Spam   ⌘G  │
+│  Gmail: Preview (Dry Run)…          │
+├─────────────────────────────────────┤
+│  Triage Inbox for Actions (AI)  ⌘T  │
+│  Preview Triage (Dry Run)…          │
+├─────────────────────────────────────┤
+│  Last run: Unsubscribe              │
+│  Open Log…                          │
+│  Open Spammer List…                 │
+├─────────────────────────────────────┤
+│  ✓ Run Daily at 9:00 AM             │
+│  ✓ Open at Login                    │
+├─────────────────────────────────────┤
+│  View on GitHub…                    │
+│  Quit Unsubscribe               ⌘Q  │
+└─────────────────────────────────────┘
+```
+
+<!-- Tip: replace the box above with a real screenshot — drop docs/menu.png in
+     and use:  ![Menu](docs/menu.png) -->
 
 - **Unsubscribe Now** — run for real
 - **Preview (Dry Run)** — show what it would do, change nothing
@@ -147,14 +181,47 @@ launchctl unload ~/Library/LaunchAgents/com.local.unsubscribe.plist
 rm ~/Library/LaunchAgents/com.local.unsubscribe.plist
 ```
 
+## Privacy
+
+Unsubscribe is built to keep your data on your machine:
+
+- **No telemetry, no servers, no account with us** — there's nothing to sign up
+  for and nothing phones home.
+- The **only** outbound requests are: the unsubscribe URLs that senders put in
+  their own emails; (optional) your **local** Ollama for triage; and (optional)
+  **your own** Google account via the Gmail API using **your own** OAuth client.
+- All state (logs, the seen list, captured sender addresses, Gmail tokens) lives
+  in `~/Library/Application Support/Unsubscribe/` and never leaves your Mac.
+- The AI triage runs entirely on-device via Ollama — your email content is not
+  sent to any cloud model.
+
 ## Notes & caveats
 
 - Unsubscribe links in junk mail can themselves be tracking/confirmation pages.
   This tool only follows the official `List-Unsubscribe` header (not random body
   links), which is the safest signal available, but the web is the web — review
-  `log.txt` to see exactly what was contacted.
-- It never deletes or moves your mail; it only unsubscribes and flags.
+  the logs to see exactly what was contacted.
+- By default it only **unsubscribes and flags**; it never deletes mail. Deletion
+  (to Trash, recoverable) and the triage "move to a mailbox" behavior are both
+  **opt-in** and clearly labeled.
+- Distribution is **build-from-source** (`build-app.command`). The built app is
+  ad-hoc signed, not Apple-notarized, so a prebuilt copy would trigger Gatekeeper
+  warnings — building it yourself avoids that.
+
+## Disclaimer
+
+This software is provided "as is", without warranty of any kind (see
+[LICENSE](LICENSE)). It automates actions on your real email — unsubscribing
+from senders and, when you opt in, moving messages to Trash or other mailboxes.
+**Use at your own risk.** Try **Preview (Dry Run)** first, review the logs, and
+make sure you're comfortable with what it does before running it for real. The
+authors are not responsible for any lost or mis-filed mail.
+
+## Contributing
+
+Issues and pull requests welcome. It's intentionally dependency-free (Python
+standard library + Swift + AppleScript), so please keep new code in that spirit.
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) — © 2026 henrybasset

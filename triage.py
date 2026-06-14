@@ -30,6 +30,8 @@ Usage:
 import os
 import sys
 import json
+import time
+import shutil
 import subprocess
 import urllib.request
 import urllib.error
@@ -134,6 +136,51 @@ def ollama_up():
         return True
     except Exception:
         return False
+
+
+def ollama_bin():
+    for c in ("/opt/homebrew/bin/ollama", "/usr/local/bin/ollama", "/usr/bin/ollama"):
+        if os.path.exists(c):
+            return c
+    return shutil.which("ollama")
+
+
+def ensure_ollama_running():
+    """Start the Ollama server if it isn't already up. Returns True if up."""
+    if ollama_up():
+        return True
+    # Prefer the menu-bar Ollama.app (managed server); else `ollama serve`.
+    if os.path.isdir("/Applications/Ollama.app"):
+        subprocess.run(["open", "-a", "Ollama"], capture_output=True)
+    else:
+        b = ollama_bin()
+        if b:
+            subprocess.Popen([b, "serve"], stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL, start_new_session=True)
+    for _ in range(20):  # wait up to ~20s for it to come up
+        if ollama_up():
+            return True
+        time.sleep(1)
+    return ollama_up()
+
+
+def have_model(model):
+    try:
+        with urllib.request.urlopen(OLLAMA + "/api/tags", timeout=4) as r:
+            names = [m.get("name", "") for m in json.load(r).get("models", [])]
+    except Exception:
+        return False
+    base = model.split(":")[0]
+    return any(n == model or n.split(":")[0] == base for n in names)
+
+
+def pull_model(model):
+    """Download the model if it isn't present (one-time, can be a few GB)."""
+    b = ollama_bin()
+    if not b:
+        return False
+    log("Model %s not found — pulling it now (one-time, a few GB)..." % model)
+    return subprocess.run([b, "pull", model]).returncode == 0
 
 
 def ollama_classify(model, subject, sender, body):
@@ -246,14 +293,20 @@ def main():
     mode = "DRY RUN — nothing will change" if DRY_RUN else "LIVE"
     log("\n=== Triage (%s) — model %s ===" % (mode, cfg["triage_model"]))
 
-    if not ollama_up():
-        msg = ("Ollama isn't reachable at %s.\n\n"
-               "Install it from https://ollama.com, then run:\n"
-               "  ollama pull %s\n"
-               "Make sure Ollama is running, then try Triage again."
-               % (OLLAMA, cfg["triage_model"]))
-        log(msg)
+    model = cfg["triage_model"]
+    if not ensure_ollama_running():
+        if not ollama_bin():
+            log("Ollama isn't installed. Install it from https://ollama.com, "
+                "then try Triage again.")
+        else:
+            log("Couldn't start Ollama. Open the Ollama app (or run "
+                "`ollama serve`) and try Triage again.")
         return
+    if not have_model(model):
+        if not pull_model(model):
+            log("Model %s is unavailable and the download failed.\n"
+                "Run:  ollama pull %s" % (model, model))
+            return
 
     msgs = fetch_recent_inbox(cfg["triage_days"])
     seen = load_seen()
