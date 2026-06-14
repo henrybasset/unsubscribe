@@ -13,6 +13,19 @@ senders themselves put in their emails.
 
 > **macOS · menu bar app · 100% local · MIT licensed**
 
+## Download & install (the easy way)
+
+1. Download **Unsubscribe.dmg** from the [Releases](https://github.com/henrybasset/unsubscribe/releases) page.
+2. Double-click it, then drag **Unsubscribe!** onto the **Applications** folder.
+3. Open it from Applications. **The first time**, macOS may say it "can't verify"
+   the app (normal for apps outside the App Store): go to  **Apple menu → System
+   Settings → Privacy & Security**, scroll down, and click **Open Anyway**.
+4. When asked, allow it to work with **Mail**. Look for the **envelope icon in
+   the menu bar** at the top of your screen — click it to clean up junk anytime.
+
+Full plain-language steps are in `INSTALL.txt` inside the download. Prefer to
+build it yourself? See [Build as a Mac app](#install-as-a-mac-app) below.
+
 ## What it does
 
 1. Asks Mail.app (via AppleScript) for the headers of every message in any

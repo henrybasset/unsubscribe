@@ -1,0 +1,33 @@
+Unsubscribe!  —  How to install  (about 1 minute)
+
+
+1.  Double-click the file you downloaded (it ends in “.dmg”).
+    A small window opens.
+
+2.  Drag the  Unsubscribe!  icon onto the  Applications  folder
+    in that same window.
+
+3.  Open your Applications folder and double-click  Unsubscribe!
+
+
+THE FIRST TIME ONLY — macOS may say it “cannot verify” the app.
+That is normal for apps not sold in the App Store. To allow it:
+
+    •  Click  Done  (or  OK)  on the message.
+    •  Open the Apple menu  >  System Settings  >  Privacy & Security.
+    •  Scroll down until you see a line mentioning  “Unsubscribe!”
+    •  Click  Open Anyway,  and confirm with your password or Touch ID.
+
+
+4.  When it asks for permission to work with Mail, click  OK.
+
+    (If a window offers to install “developer tools,” click  Install.
+     It’s a free, one-time download from Apple.)
+
+
+5.  That’s it!  Look for a small envelope icon in the menu bar at the
+    very TOP of your screen, on the right. Click it any time to clean
+    up junk mail.
+
+
+Questions or the source code:   https://github.com/henrybasset/unsubscribe
