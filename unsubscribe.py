@@ -65,6 +65,15 @@ on run
         set candidates to candidates & (every mailbox of acct)
       end try
     end repeat
+    -- expand to include nested sub-mailboxes (e.g. [Gmail]/Spam)
+    set i to 1
+    repeat while i is less than or equal to (count of candidates)
+      try
+        set kids to (mailboxes of (item i of candidates))
+        if (count of kids) > 0 then set candidates to candidates & kids
+      end try
+      set i to i + 1
+    end repeat
     repeat with mb in candidates
       set nm to ""
       try
@@ -211,6 +220,15 @@ on run
         set candidates to candidates & (every mailbox of acct)
       end try
     end repeat
+    -- expand to include nested sub-mailboxes (e.g. [Gmail]/Spam)
+    set i to 1
+    repeat while i is less than or equal to (count of candidates)
+      try
+        set kids to (mailboxes of (item i of candidates))
+        if (count of kids) > 0 then set candidates to candidates & kids
+      end try
+      set i to i + 1
+    end repeat
     repeat with mb in candidates
       set nm to ""
       try
@@ -271,10 +289,19 @@ def main():
     known_spammers = load_spammers()
     new_spammers = []
     handled_ids = set()
+    processed_ids = set()  # dedupe messages listed under more than one mailbox
     done = mailto_only = nolink = already = 0
 
     for block in blocks:
         info = parse_unsub(block)
+
+        # The same message can appear under multiple mailbox names (e.g. Gmail
+        # lists spam under both "Spam" and "[Gmail]/Spam"). Process it once.
+        mid = info["message_id"]
+        if mid and mid in processed_ids:
+            continue
+        if mid:
+            processed_ids.add(mid)
 
         # Capture every junk sender's address (deduped across runs), whether or
         # not it offers an unsubscribe link.
